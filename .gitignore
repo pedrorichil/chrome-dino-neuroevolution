@@ -1,32 +1,46 @@
-# Prerequisites
-*.d
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Compiled Object files
-*.slo
-*.lo
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Telemetry temporary files (keep directory, ignore runtime logs if needed)
+telemetry/*.csv
+
+# Compiled C/C++ Artifacts
+*.d
 *.o
 *.obj
-
-# Precompiled Headers
 *.gch
 *.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
 *.exe
 *.out
 *.app
