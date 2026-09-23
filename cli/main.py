@@ -4,8 +4,9 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import multiprocessing
+import json
 import pygame
 
 from config.settings import GameConfig
@@ -122,43 +123,74 @@ def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str], se
         print(f"[Erro] Falha ao carregar modelo '{path}': {e}")
 
 
-def _parallel_worker(core_id: int, population_size: int, target_generations: int) -> float:
+def _parallel_worker(core_id: int, population_size: int, target_generations: int, seed_best: bool = True) -> Tuple[float, Optional[Genome]]:
     """Headless worker process running simulation on an isolated CPU core."""
     config = GameConfig()
     config.genetic.population_size = population_size
     engine = GameEngine(config=config, mode="training", enable_telemetry=(core_id == 0))
+
+    if seed_best:
+        load_model_if_provided(engine, None, seed_best=True)
 
     gen = 0
     while gen < target_generations:
         finished = engine.step(dt=0.005)
         if finished:
             gen += 1
-            if core_id == 0:
+            if core_id == 0 or gen % 10 == 0:
                 print(f"[Core {core_id}] Geração {gen}/{target_generations} - Recorde: {engine.record_distance:.0f}px")
 
-    if core_id == 0 and engine.ga and len(engine.ga.population) > 0:
-        champion = engine.ga.population[0]
-        out_path = Path(f"models/parallel_champion_record_{engine.record_distance:.0f}.json")
-        champion.to_json(out_path, metadata={"record": engine.record_distance, "generations": gen})
-
-    return engine.record_distance
+    best_genome = engine.ga.population[0].copy() if (engine.ga and len(engine.ga.population) > 0) else None
+    return engine.record_distance, best_genome
 
 
-def run_parallel_training(num_cores: int, population: int, generations: int, export_plot: bool = False) -> None:
+def run_parallel_training(
+    num_cores: int, population: int, generations: int, export_plot: bool = False, seed_best: bool = True
+) -> None:
     """Orchestrates multi-core parallel simulations across available CPU cores."""
-    gens = generations if generations > 0 else 10
+    gens = generations if generations > 0 else 50
     print(f"\nIniciando Treinamento Paralelo Multi-Core em {num_cores} núcleos...")
-    print(f"População por núcleo: {population} | Meta: {gens} gerações")
+    print(f"População por núcleo: {population} | Meta: {gens} gerações | Semeado do Campeão: {seed_best}")
     t0 = time.perf_counter()
 
     with multiprocessing.Pool(processes=num_cores) as pool:
-        args = [(i, population, gens) for i in range(num_cores)]
+        args = [(i, population, gens, seed_best) for i in range(num_cores)]
         results = pool.starmap(_parallel_worker, args)
 
     total_time = time.perf_counter() - t0
-    best_overall = max(results)
+    best_record = -1.0
+    best_genome = None
+
+    for rec, gen_obj in results:
+        if rec > best_record:
+            best_record = rec
+            best_genome = gen_obj
+
     print(f"\nTreinamento Paralelo Concluído em {total_time:.2f}s!")
-    print(f"Melhor distância alcançada entre os núcleos: {best_overall:.1f} pixels")
+    print(f"Melhor distância alcançada entre os núcleos: {best_record:.1f} pixels")
+
+    if best_genome is not None:
+        models_dir = Path("models")
+        models_dir.mkdir(exist_ok=True)
+        best_file = models_dir / "champion_best.json"
+
+        # Check existing record
+        current_best = 0.0
+        if best_file.exists():
+            try:
+                with open(best_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    current_best = float(data.get("metadata", {}).get("record", 0.0))
+            except Exception:
+                current_best = 0.0
+
+        if best_record >= current_best:
+            best_genome.to_json(best_file, metadata={"record": best_record, "generations": gens, "cores": num_cores})
+            print(f"[NOVO RECORDE MUNDIAL] Modelo campeão atualizado em: {best_file} ({best_record:.0f}px)!")
+        else:
+            ts_file = models_dir / f"parallel_champion_{best_record:.0f}px.json"
+            best_genome.to_json(ts_file, metadata={"record": best_record, "generations": gens})
+            print(f"Modelo desta sessão salvo em: {ts_file}")
 
     if export_plot:
         plotter = TelemetryPlotter()
@@ -315,6 +347,7 @@ def main() -> None:
             population=pop,
             generations=args.generations,
             export_plot=args.export_plot,
+            seed_best=args.seed_best,
         )
         return
 
