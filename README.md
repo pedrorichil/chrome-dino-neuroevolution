@@ -8,6 +8,8 @@
 
 Ambiente de simulação e **Neuroevolução em tempo real** do jogo do Dinossauro do Google Chrome. Uma população de dinossauros controlados por Redes Neurais Artificiais aprende a correr, esquivar de cactos, desviar de pássaros em múltiplas altitudes e pilotar aviões através de Algoritmos Genéticos com inferência em lote vetorizada (`np.einsum`).
 
+> 💡 **Nota de Origem**: Este projeto é baseado no trabalho original em C/C++ de [JVictorDias/Dinossauro-Google](https://github.com/JVictorDias/Dinossauro-Google), tendo sido **completamente reescrito do zero em Python**, modernizado com *Clean Architecture* e amplamente otimizado em sua inteligência artificial e física.
+
 ![Preview](preview.gif)
 
 ---
@@ -21,6 +23,7 @@ Ambiente de simulação e **Neuroevolução em tempo real** do jogo do Dinossaur
 - [✨ Recursos Visuais & Áudio Retrô](#-recursos-visuais--áudio-retrô)
 - [📁 Estrutura do Código](#-estrutura-do-código)
 - [🧪 Testes & Engenharia de Software](#-testes--engenharia-de-software)
+- [💡 Origem e Agradecimentos](#-origem-e-agradecimentos)
 
 ---
 
@@ -195,3 +198,25 @@ Módulos validados:
 - `test_advanced_features.py`: crossover uniforme/aritmético e hipermutação adaptativa.
 - `test_physics.py`: detecção de colisão AABB, aceleração gravitacional e transição de estados.
 - `test_legacy_compat.py`: compatibilidade binária de leitura/escrita com os modelos clássicos de 70 pesos.
+
+---
+
+## 💡 Origem e Agradecimentos
+
+Este projeto é uma evolução direta do projeto [Dinossauro-Google](https://github.com/JVictorDias/Dinossauro-Google) desenvolvido por **João Victor Dias** ([Universo Programado](https://www.youtube.com/watch?v=NZlIYr1slAk)), originalmente implementado em C/C++ utilizando a biblioteca gráfica PIG/SDL.
+
+### 🚀 Diferenciais Desta Reescrita e Otimização:
+- **Portabilidade & Modernização 100% Python**: Código C/C++ legado e dependências de compilação C foram inteiramente substituídos por uma arquitetura Python moderna e tipada.
+- **Vetorização em Batch com Tensores NumPy**: Substituição de loops sequenciais em C por inferência simultânea de 2.000 redes neurais em $< 0.35\text{ms}$ através de tensores `np.einsum`.
+- **Neuroevolução Otimizada**:
+  - **Normalização de Sensores**: Entradas reescalonadas para $[0.0, 1.0]$, equilibrando a sensibilidade entre distância e velocidade.
+  - **Topologia de 12 Neurônios & LeakyReLU**: Dobro da capacidade de representação e eliminação definitiva do *Dying ReLU*.
+  - **Arbitragem Motora**: Prevenção do conflito simultâneo de salto e agachamento que causava quedas rápidas (*fast-fall*) involuntárias.
+  - **Reward Shaping no Fitness**: Bônus de $+50.0$ pontos por obstáculo ultrapassado e penalização por pulos no vazio.
+  - **Mutação Gaussiana Fina**: Ajustes milimétricos nos pesos dos campeões avançados sem desestabilizar os reflexos consolidados.
+- **Engenharia de Software & MLOps**:
+  - *Clean Architecture* com módulos independentes (`config/`, `core/`, `game/`, `rendering/`, `telemetry/`, `cli/`).
+  - Suíte de 19 testes automatizados com `pytest` (100% aprovados).
+  - Telemetria com exportação CSV e gráficos analíticos em Matplotlib.
+  - Treinamento paralelo multi-core acelerado.
+  - Síntese de áudio procedural 8-bits matemática (sem dependência de arquivos de som externos).
