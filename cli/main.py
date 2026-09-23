@@ -70,8 +70,9 @@ def parse_arguments() -> argparse.Namespace:
 
 def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str]) -> None:
     """Loads weights from file into engine."""
+    base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
     if not model_path_str:
-        default_legacy = Path("models/rede_legacy_x1")
+        default_legacy = base_dir / "models" / "rede_legacy_x1"
         if default_legacy.exists() and engine.mode in ("play", "evaluation", "versus"):
             model_path_str = str(default_legacy)
         else:
@@ -79,8 +80,12 @@ def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str]) ->
 
     path = Path(model_path_str)
     if not path.exists():
-        print(f"[Aviso] Arquivo de modelo não encontrado: {path}")
-        return
+        fallback_path = base_dir / model_path_str
+        if fallback_path.exists():
+            path = fallback_path
+        else:
+            print(f"[Aviso] Arquivo de modelo não encontrado: {path}")
+            return
 
     try:
         if path.suffix == ".json":

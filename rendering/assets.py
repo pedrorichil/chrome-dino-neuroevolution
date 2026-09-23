@@ -1,6 +1,7 @@
 """Asset manager for loading, colorkeying, tinting, and caching game sprites and fonts."""
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional
 import pygame
@@ -12,7 +13,13 @@ class AssetManager:
     """Manages sprite sheets, color palettes, and fonts for the game."""
 
     def __init__(self, assets_dir: Optional[Path] = None, display_settings: Optional[DisplaySettings] = None):
-        self.assets_dir = assets_dir or Path(__file__).resolve().parent.parent / "assets"
+        if assets_dir is not None:
+            self.assets_dir = Path(assets_dir)
+        elif hasattr(sys, "_MEIPASS"):
+            self.assets_dir = Path(sys._MEIPASS) / "assets"
+        else:
+            self.assets_dir = Path(__file__).resolve().parent.parent / "assets"
+
         self.display = display_settings or DisplaySettings()
 
         self.img_dir = self.assets_dir / "imagens"
