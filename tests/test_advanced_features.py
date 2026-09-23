@@ -138,3 +138,16 @@ def test_high_precision_motor_arbitration():
         jump_val=0.12, duck_val=0.0, plane_val=0.0, cooldown=0.0, speed_mag=8.0
     )
     assert jump_fast is True
+
+    # Airplane Gatekeeper test:
+    # 1. Minor cactus (obs_width=32.0): airplane should be blocked from accidental trigger
+    _, _, plane_cactus = GameEngine._arbitrate_actions(
+        jump_val=0.10, duck_val=0.0, plane_val=0.50, cooldown=0.0, speed_mag=3.0, obs_width=32.0
+    )
+    assert plane_cactus is False  # Gatekeeper prevents wasting airplane on small cactus
+
+    # 2. Spikes chasm (obs_width=810.0): airplane must fire!
+    _, _, plane_spikes = GameEngine._arbitrate_actions(
+        jump_val=0.10, duck_val=0.0, plane_val=0.50, cooldown=0.0, speed_mag=3.0, obs_width=810.0
+    )
+    assert plane_spikes is True

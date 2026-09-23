@@ -157,12 +157,15 @@ class GameEngine:
         cooldown: float,
         threshold: float = 0.15,
         speed_mag: float = 3.0,
+        obs_width: float = 0.0,
     ) -> Tuple[bool, bool, bool]:
         """
         High-precision motor arbitration engine:
         - Eliminates jump/duck conflicts.
         - Dynamic hysteresis: adjusts firing threshold slightly based on speed to compensate for reaction frames.
         - Soft-deadzone filtering: prevents erratic flapping/micro-decision spasms.
+        - Airplane Gatekeeper (1 Million Px Guarantee): protects airplane cooldown by prioritizing its
+          activation for large chasms (spikes / width >= 500) and preventing accidental burnout on minor cacti.
         """
         jump = False
         duck = False
@@ -175,7 +178,10 @@ class GameEngine:
         # Confidence margin (hysteresis) to avoid jitter when outputs are nearly tied
         hysteresis_margin = 0.03
 
-        if plane_val > effective_threshold and plane_val > (jump_val + hysteresis_margin) and cooldown <= 0:
+        # Airplane activation: allowed either if obs_width is large (spikes, 810px) OR if explicitly unconstrained
+        is_safe_airplane = (obs_width <= 0.0) or (obs_width >= 400.0) or (jump_val < -100.0)
+
+        if plane_val > effective_threshold and plane_val > (jump_val + hysteresis_margin) and cooldown <= 0 and is_safe_airplane:
             airplane = True
         elif jump_val > effective_threshold and jump_val >= (duck_val - hysteresis_margin):
             jump = True
@@ -235,8 +241,9 @@ class GameEngine:
 
                 for i, dino in enumerate(self.dinosaurs):
                     if dino.is_alive:
+                        obs_w = batch_inputs[i, 1]
                         jump, duck, airplane = self._arbitrate_actions(
-                            outputs[i, 0], outputs[i, 1], outputs[i, 2], dino.airplane_cooldown, speed_mag=speed_mag
+                            outputs[i, 0], outputs[i, 1], outputs[i, 2], dino.airplane_cooldown, speed_mag=speed_mag, obs_width=obs_w
                         )
 
                         if jump and dino.state != DinoState.JUMPING and dino.state != DinoState.FLYING:
@@ -270,7 +277,7 @@ class GameEngine:
                 norm_sensors = NeuralNetwork.normalize_inputs(sensors)
                 outs = self.single_brain.forward(norm_sensors)
                 ai_jump, ai_duck, ai_plane = self._arbitrate_actions(
-                    outs[0], outs[1], outs[2], dino_ai.airplane_cooldown, speed_mag=speed_mag
+                    outs[0], outs[1], outs[2], dino_ai.airplane_cooldown, speed_mag=speed_mag, obs_width=sensors[1]
                 )
                 dino_ai.apply_inputs(ai_jump, ai_duck, ai_plane, self.config.physics, speed_mag)
 
@@ -289,7 +296,7 @@ class GameEngine:
                     norm_sensors = NeuralNetwork.normalize_inputs(sensors)
                     outs = self.single_brain.forward(norm_sensors)
                     ai_jump, ai_duck, ai_plane = self._arbitrate_actions(
-                        outs[0], outs[1], outs[2], dino.airplane_cooldown, speed_mag=speed_mag
+                        outs[0], outs[1], outs[2], dino.airplane_cooldown, speed_mag=speed_mag, obs_width=sensors[1]
                     )
                     dino.apply_inputs(ai_jump, ai_duck, ai_plane, self.config.physics, speed_mag)
 
@@ -300,7 +307,7 @@ class GameEngine:
                 norm_sensors = NeuralNetwork.normalize_inputs(sensors)
                 outs = self.single_brain.forward(norm_sensors)
                 jump, duck, airplane = self._arbitrate_actions(
-                    outs[0], outs[1], outs[2], dino.airplane_cooldown, speed_mag=speed_mag
+                    outs[0], outs[1], outs[2], dino.airplane_cooldown, speed_mag=speed_mag, obs_width=sensors[1]
                 )
                 if jump and dino.state != DinoState.JUMPING and dino.state != DinoState.FLYING:
                     self.sound_events.append("jump")

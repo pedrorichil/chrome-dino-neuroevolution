@@ -184,7 +184,15 @@ def run_parallel_training(
             except Exception:
                 current_best = 0.0
 
-        if best_record >= current_best:
+        if best_record >= 1_000_000.0:
+            legendary_file = models_dir / "champion_1_million.json"
+            best_genome.to_json(legendary_file, metadata={"record": best_record, "generations": gens, "milestone": "1_MILLION_PIXELS"})
+            best_genome.to_json(best_file, metadata={"record": best_record, "generations": gens, "milestone": "1_MILLION_PIXELS"})
+            print("\n" + "=" * 70)
+            print(" ★★★ PARABÉNS! O DINOSSAURO ATINGIU 1 MILHÃO DE PIXELS! ★★★")
+            print(f" Modelo imortal salvo em: {legendary_file}")
+            print("=" * 70 + "\n")
+        elif best_record >= current_best:
             best_genome.to_json(best_file, metadata={"record": best_record, "generations": gens, "cores": num_cores})
             print(f"[NOVO RECORDE MUNDIAL] Modelo campeão atualizado em: {best_file} ({best_record:.0f}px)!")
         else:
