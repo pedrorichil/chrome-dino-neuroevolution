@@ -116,3 +116,25 @@ def test_versus_mode_engine():
     finished = engine.step(dt=0.005, player_inputs=(True, False, False))
     assert finished is False
     assert dino_human.state == DinoState.JUMPING
+
+
+def test_high_precision_motor_arbitration():
+    # Test hysteresis and dynamic threshold scaling
+    # Low speed (3.0): threshold is 0.15
+    jump, duck, plane = GameEngine._arbitrate_actions(
+        jump_val=0.16, duck_val=0.10, plane_val=0.0, cooldown=0.0, speed_mag=3.0
+    )
+    assert jump is True
+    assert duck is False
+
+    # Near tie with hysteresis margin (0.03): jump must have confidence to override duck
+    jump_tie, duck_tie, _ = GameEngine._arbitrate_actions(
+        jump_val=0.17, duck_val=0.16, plane_val=0.0, cooldown=0.0, speed_mag=3.0
+    )
+    assert jump_tie is True
+
+    # High speed (8.0): threshold decreases dynamically to 0.10 to allow faster reflex
+    jump_fast, _, _ = GameEngine._arbitrate_actions(
+        jump_val=0.12, duck_val=0.0, plane_val=0.0, cooldown=0.0, speed_mag=8.0
+    )
+    assert jump_fast is True

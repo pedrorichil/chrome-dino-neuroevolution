@@ -61,3 +61,30 @@ def test_collision_with_hitbox_correction():
     # Obstacle far ahead
     obs_far = Obstacle(obs_type=ObstacleType.CACTUS_SMALL_1, x=600.0, y=15.0)
     assert check_dino_obstacle_collision(dino, obs_far) is False
+
+
+def test_dinosaur_mass_and_weight_physics():
+    physics = PhysicsSettings(gravity=0.08, jump_impulse=4.0, mass=1.0)
+    dino_light = Dinosaur(index=0, x=300.0, y=15.0)
+    dino_light.mass = 0.5
+
+    dino_heavy = Dinosaur(index=1, x=300.0, y=15.0)
+    dino_heavy.mass = 2.0
+
+    # Ambos pulam: dino mais leve ganha maior velocidade vertical
+    dino_light.apply_inputs(jump=True, duck=False, airplane=False, physics=physics, speed_magnitude=3.0)
+    dino_heavy.apply_inputs(jump=True, duck=False, airplane=False, physics=physics, speed_magnitude=3.0)
+
+    assert dino_light.velocity_y > dino_heavy.velocity_y
+    assert dino_light.velocity_y == pytest.approx(4.0 / 0.5)
+    assert dino_heavy.velocity_y == pytest.approx(4.0 / 2.0)
+
+    # Gravidade proporcional a massa: o mais pesado desacelera mais rápido
+    dino_light.update_physics(physics=physics, speed=-3.0)
+    dino_heavy.update_physics(physics=physics, speed=-3.0)
+
+    # Variação de velocidade para o pesado é maior
+    expected_grav_light = 0.08 * (0.5 / 1.0)
+    expected_grav_heavy = 0.08 * (2.0 / 1.0)
+    assert dino_light.velocity_y == pytest.approx((4.0 / 0.5) - expected_grav_light)
+    assert dino_heavy.velocity_y == pytest.approx((4.0 / 2.0) - expected_grav_heavy)

@@ -151,18 +151,35 @@ class GameEngine:
 
     @staticmethod
     def _arbitrate_actions(
-        jump_val: float, duck_val: float, plane_val: float, cooldown: float, threshold: float = 0.15
+        jump_val: float,
+        duck_val: float,
+        plane_val: float,
+        cooldown: float,
+        threshold: float = 0.15,
+        speed_mag: float = 3.0,
     ) -> Tuple[bool, bool, bool]:
-        """Arbitrates motor decisions: eliminates jump/duck conflicts and enforces thresholds."""
+        """
+        High-precision motor arbitration engine:
+        - Eliminates jump/duck conflicts.
+        - Dynamic hysteresis: adjusts firing threshold slightly based on speed to compensate for reaction frames.
+        - Soft-deadzone filtering: prevents erratic flapping/micro-decision spasms.
+        """
         jump = False
         duck = False
         airplane = False
 
-        if plane_val > threshold and plane_val > jump_val and cooldown <= 0:
+        # Dynamic threshold tuning: as speed grows, lower threshold by up to 0.05 for sharper reaction time
+        speed_ratio = min(1.0, max(0.0, (speed_mag - 3.0) / 5.0))
+        effective_threshold = threshold - (0.05 * speed_ratio)
+
+        # Confidence margin (hysteresis) to avoid jitter when outputs are nearly tied
+        hysteresis_margin = 0.03
+
+        if plane_val > effective_threshold and plane_val > (jump_val + hysteresis_margin) and cooldown <= 0:
             airplane = True
-        elif jump_val > threshold and jump_val >= duck_val:
+        elif jump_val > effective_threshold and jump_val >= (duck_val - hysteresis_margin):
             jump = True
-        elif duck_val > threshold:
+        elif duck_val > effective_threshold:
             duck = True
 
         return jump, duck, airplane
@@ -181,6 +198,7 @@ class GameEngine:
         self.environment.update(self.speed)
 
         # 2. Update obstacles and recycle off-screen
+        bonus_apex = getattr(self.config.genetic, "bonus_apex_precision", 30.0)
         for i, obs in enumerate(self.obstacles):
             old_right = obs.x + obs.width
             obs.update(self.speed, dt=dt)
@@ -190,6 +208,12 @@ class GameEngine:
             for dino in self.dinosaurs:
                 if dino.is_alive and old_right >= dino.x and new_right < dino.x:
                     dino.fitness += bonus_cleared
+                    # Bônus de ápice: se o dinossauro passou voando por cima com margem perfeita (sem salto afobado)
+                    if dino.state in (DinoState.JUMPING, DinoState.FLYING):
+                        clearance = (dino.y) - (obs.y + obs.height)
+                        if 0.0 <= clearance <= 35.0:
+                            # Passou raspando cirurgicamente no topo
+                            dino.fitness += bonus_apex
 
             if obs.x + obs.width < -20.0:
                 self.obstacles[i] = self.spawner.get_next_obstacle(self.distance)
@@ -212,7 +236,7 @@ class GameEngine:
                 for i, dino in enumerate(self.dinosaurs):
                     if dino.is_alive:
                         jump, duck, airplane = self._arbitrate_actions(
-                            outputs[i, 0], outputs[i, 1], outputs[i, 2], dino.airplane_cooldown
+                            outputs[i, 0], outputs[i, 1], outputs[i, 2], dino.airplane_cooldown, speed_mag=speed_mag
                         )
 
                         if jump and dino.state != DinoState.JUMPING and dino.state != DinoState.FLYING:
@@ -246,7 +270,7 @@ class GameEngine:
                 norm_sensors = NeuralNetwork.normalize_inputs(sensors)
                 outs = self.single_brain.forward(norm_sensors)
                 ai_jump, ai_duck, ai_plane = self._arbitrate_actions(
-                    outs[0], outs[1], outs[2], dino_ai.airplane_cooldown
+                    outs[0], outs[1], outs[2], dino_ai.airplane_cooldown, speed_mag=speed_mag
                 )
                 dino_ai.apply_inputs(ai_jump, ai_duck, ai_plane, self.config.physics, speed_mag)
 
@@ -265,7 +289,7 @@ class GameEngine:
                     norm_sensors = NeuralNetwork.normalize_inputs(sensors)
                     outs = self.single_brain.forward(norm_sensors)
                     ai_jump, ai_duck, ai_plane = self._arbitrate_actions(
-                        outs[0], outs[1], outs[2], dino.airplane_cooldown
+                        outs[0], outs[1], outs[2], dino.airplane_cooldown, speed_mag=speed_mag
                     )
                     dino.apply_inputs(ai_jump, ai_duck, ai_plane, self.config.physics, speed_mag)
 
@@ -276,7 +300,7 @@ class GameEngine:
                 norm_sensors = NeuralNetwork.normalize_inputs(sensors)
                 outs = self.single_brain.forward(norm_sensors)
                 jump, duck, airplane = self._arbitrate_actions(
-                    outs[0], outs[1], outs[2], dino.airplane_cooldown
+                    outs[0], outs[1], outs[2], dino.airplane_cooldown, speed_mag=speed_mag
                 )
                 if jump and dino.state != DinoState.JUMPING and dino.state != DinoState.FLYING:
                     self.sound_events.append("jump")

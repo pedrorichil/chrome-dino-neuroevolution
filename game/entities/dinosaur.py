@@ -26,6 +26,8 @@ class Dinosaur:
         self.velocity_y = 0.0
         self.state = DinoState.RUNNING
         self.color_idx = color_idx % 8
+        self.mass = 1.0  # Massa em kg (padrão 1.0)
+        self.weight = 9.8  # Peso em Newtons (massa * g)
 
         # Animation states
         self.anim_frame = 0
@@ -95,18 +97,20 @@ class Dinosaur:
                         self.velocity_y = 0.0
                     self.y -= physics.duck_fall_speed
 
-            # Jumping action
+            # Jumping action: impulso transferido inversamente proporcional à massa (F = m*a -> delta_v = impulse / m)
             if jump and self.state != DinoState.JUMPING:
                 self.state = DinoState.JUMPING
                 self.y += 1.0
-                self.velocity_y += physics.jump_impulse
+                mass = getattr(self, "mass", physics.mass)
+                self.velocity_y += physics.jump_impulse / max(0.1, mass)
 
             # Airplane action
             if airplane and self.airplane_cooldown <= 0.0:
                 self.state = DinoState.FLYING
                 self.y += 1.0
+                mass = getattr(self, "mass", physics.mass)
                 if self.velocity_y <= 0.5 and self.y < 25.0:
-                    self.velocity_y += physics.jump_impulse
+                    self.velocity_y += physics.jump_impulse / max(0.1, mass)
                 self.airplane_cooldown = physics.airplane_cooldown_initial
                 self.airplane_distance = 0.0
         else:
@@ -121,11 +125,15 @@ class Dinosaur:
 
     def update_physics(self, physics: PhysicsSettings, speed: float) -> None:
         """Updates dinosaur vertical gravity and horizontal motion when dead."""
+        # Aceleração gravitacional efetiva = g * (peso / peso_base)
+        mass = getattr(self, "mass", physics.mass)
+        effective_gravity = physics.gravity * (mass / physics.mass)
+
         if self.state == DinoState.DEAD:
             self.x += speed
             # Apply gravity to falling dead dinosaur until it hits ground
             if self.y > physics.ground_y:
-                self.velocity_y -= physics.gravity
+                self.velocity_y -= effective_gravity
                 self.y += self.velocity_y
                 if self.y < physics.ground_y:
                     self.y = physics.ground_y
@@ -135,13 +143,13 @@ class Dinosaur:
         # Gravity logic for alive dinosaurs
         if self.y > physics.ground_y:
             if self.state != DinoState.FLYING:
-                self.velocity_y -= physics.gravity
+                self.velocity_y -= effective_gravity
             else:
                 # Gliding during airplane flight
                 if self.velocity_y <= 0.0:
                     self.velocity_y = 0.0
                 else:
-                    self.velocity_y -= physics.gravity
+                    self.velocity_y -= effective_gravity
 
             self.y += self.velocity_y
         else:

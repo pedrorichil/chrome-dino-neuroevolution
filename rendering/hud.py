@@ -34,14 +34,17 @@ class HUD:
 
         speed_mag = abs(speed)
         px_per_sec = speed_mag / max(1e-4, clock_period) * sim_speed
+        pct = min(100.0, (speed_mag - 3.0) / (8.0 - 3.0) * 100.0)
 
-        speed_label = f"Velocidade: {speed_mag:.2f} ({px_per_sec:.0f} px/s) [{sim_speed}x]" if sim_speed > 1 else f"Velocidade: {speed_mag:.2f} ({px_per_sec:.0f} px/s)"
+        speed_label = f"Velocidade: {speed_mag:.2f} px/f ({pct:.0f}% máx) [{sim_speed}x]" if sim_speed > 1 else f"Velocidade: {speed_mag:.2f} px/f ({pct:.0f}% máx)"
+        weight_label = f"Massa / Peso: 1.0 kg (9.8 N)"
 
         lines = [
             (f"Geração: {generation}", text_color, font_large),
             (f"Vivos: {alive_count} / {total_population}", green, font),
             (f"Clock: {clock_period:.4f} segundo", text_color, font),
             (speed_label, text_color, font),
+            (weight_label, text_color, font),
         ]
 
         cur_y = self.base_y

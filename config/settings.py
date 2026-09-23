@@ -53,9 +53,11 @@ class PhysicsSettings:
     jump_impulse: float = 4.0
     duck_fall_speed: float = 2.0
     ground_y: float = 15.0
+    mass: float = 1.0
+    weight: float = 9.8  # Peso aparente (massa * gravidade proporcional)
     initial_speed: float = -3.0
     max_speed_magnitude: float = 8.0
-    speed_acceleration: float = 0.0005
+    speed_acceleration: float = 0.0015
     airplane_distance_max: float = 820.0
     airplane_cooldown_initial: float = 4000.0
     hitbox_horizontal_correction: int = 7
@@ -105,8 +107,10 @@ class GeneticSettings:
     fitness_per_running_tick: float = 2.0
     fitness_per_air_tick: float = 1.0
     bonus_obstacle_cleared: float = 50.0
-    penalty_idle_jump: float = 0.5
-    gaussian_mutation_sigma: float = 3.0
+    bonus_apex_precision: float = 30.0  # Bônus por passar no topo (ápice do salto) com margem perfeita
+    penalty_idle_jump: float = 1.0       # Penalidade aumentada para saltos no vazio
+    penalty_late_jump: float = 5.0       # Penalidade severa para saltos tardios
+    gaussian_mutation_sigma: float = 2.0  # Mutação gaussiana mais fina para convergência cirúrgica
 
 
 @dataclass
