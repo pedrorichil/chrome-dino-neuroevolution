@@ -72,9 +72,12 @@ def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str]) ->
     """Loads weights from file into engine."""
     base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
     if not model_path_str:
-        default_legacy = base_dir / "models" / "rede_legacy_x1"
-        if default_legacy.exists() and engine.mode in ("play", "evaluation", "versus"):
-            model_path_str = str(default_legacy)
+        models_dir = base_dir / "models"
+        json_models = sorted(models_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if json_models and engine.mode in ("play", "evaluation", "versus"):
+            model_path_str = str(json_models[0])
+        elif (models_dir / "rede_legacy_x1").exists() and engine.mode in ("play", "evaluation", "versus"):
+            model_path_str = str(models_dir / "rede_legacy_x1")
         else:
             return
 
