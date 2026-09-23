@@ -26,6 +26,13 @@ def build():
         "--name", "ChromeDinoAI",
         "--add-data", f"assets{os.pathsep}assets",
         "--add-data", f"models{os.pathsep}models",
+        "--exclude-module", "scipy",
+        "--exclude-module", "pyarrow",
+        "--exclude-module", "pandas",
+        "--exclude-module", "sqlalchemy",
+        "--exclude-module", "IPython",
+        "--exclude-module", "jupyter",
+        "--exclude-module", "tkinter",
     ]
 
     if icon_path.exists():
@@ -51,6 +58,12 @@ def build():
     app_folder = dist_dir / "ChromeDinoAI"
 
     if app_folder.exists():
+        # Create convenient double-click shortcuts inside distribution folder
+        (app_folder / "1 - Treinar 2000 Dinos.bat").write_text("@echo off\nstart ChromeDinoAI.exe\n", encoding="utf-8")
+        (app_folder / "2 - Assistir Dinossauro Campeao.bat").write_text("@echo off\nstart ChromeDinoAI.exe --mode evaluation\n", encoding="utf-8")
+        (app_folder / "3 - Duelo Humano vs IA.bat").write_text("@echo off\nstart ChromeDinoAI.exe --mode versus\n", encoding="utf-8")
+        (app_folder / "4 - Treinar Partindo do Campeao.bat").write_text("@echo off\nstart ChromeDinoAI.exe --seed-best\n", encoding="utf-8")
+
         print(f"Criando pacote zip para GitHub Release: {release_zip.name}...")
         with zipfile.ZipFile(release_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
             for file_path in app_folder.rglob("*"):

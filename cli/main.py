@@ -65,19 +65,32 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Generate and save an analytical evolution plot with Matplotlib after headless training.",
     )
+    parser.add_argument(
+        "--seed-best",
+        action="store_true",
+        help="Inicia a população semeada a partir do melhor dinossauro campeão histórico em vez de pesos aleatórios.",
+    )
     return parser.parse_args()
 
 
-def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str]) -> None:
+def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str], seed_best: bool = False) -> None:
     """Loads weights from file into engine."""
     base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    models_dir = base_dir / "models"
+    best_file = models_dir / "champion_best.json"
+
     if not model_path_str:
-        models_dir = base_dir / "models"
-        json_models = sorted(models_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-        if json_models and engine.mode in ("play", "evaluation", "versus"):
-            model_path_str = str(json_models[0])
-        elif (models_dir / "rede_legacy_x1").exists() and engine.mode in ("play", "evaluation", "versus"):
-            model_path_str = str(models_dir / "rede_legacy_x1")
+        if engine.mode in ("play", "evaluation", "versus") or seed_best:
+            if best_file.exists():
+                model_path_str = str(best_file)
+            else:
+                json_models = sorted(models_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if json_models:
+                    model_path_str = str(json_models[0])
+                elif (models_dir / "rede_legacy_x1").exists():
+                    model_path_str = str(models_dir / "rede_legacy_x1")
+                else:
+                    return
         else:
             return
 
@@ -96,7 +109,7 @@ def load_model_if_provided(engine: GameEngine, model_path_str: Optional[str]) ->
         else:
             genome = Genome.from_legacy_binary(path)
 
-        print(f"[Sucesso] Modelo carregado com sucesso de '{path}' ({genome.length} pesos)!")
+        print(f"[Sucesso] Modelo Campeão carregado de '{path.name}' ({genome.length} pesos)!")
 
         if engine.single_brain:
             engine.single_brain.load_genome(genome)
@@ -319,7 +332,7 @@ def main() -> None:
     engine_mode = mode_map[args.mode]
     engine = GameEngine(config=config, mode=engine_mode, enable_telemetry=True)
 
-    load_model_if_provided(engine, args.model)
+    load_model_if_provided(engine, args.model, seed_best=args.seed_best)
 
     if args.mode == "headless":
         run_headless(engine, max_generations=args.generations, export_plot=args.export_plot)
