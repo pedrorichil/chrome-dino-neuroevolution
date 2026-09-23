@@ -91,7 +91,7 @@ class Renderer:
             b = int(night_color[2] * (1 - t) + day_color[2] * t)
             return (r, g, b), 1.0 - t
 
-    def render(self, engine: GameEngine, clock_period: float = 0.005) -> None:
+    def render(self, engine: GameEngine, clock_period: float = 0.005, sim_speed: int = 1) -> None:
         """Renders one full frame."""
         # Process audio events triggered by engine
         for ev in engine.sound_events:
@@ -292,6 +292,7 @@ class Renderer:
             alive_count=alive_count,
             total_population=engine.population_size,
             dark_mode=is_dark,
+            sim_speed=sim_speed,
         )
 
         # Hotkey status hints at top right
@@ -300,9 +301,10 @@ class Renderer:
         sens_txt = "[S] Raios: ON" if self.show_sensors else "[S] Raios: OFF"
         hit_txt = "[H] Hitbox: ON" if self.show_hitboxes else "[H] Hitbox: OFF"
         night_txt = "[N] Noite: ON" if self.enable_day_night else "[N] Noite: OFF"
-        hints = f"{sens_txt}  |  {hit_txt}  |  {night_txt}  |  {mute_txt}  |  [ESC] Turbo"
+        speed_txt = f"[+/-] {sim_speed}x"
+        hints = f"{speed_txt}  |  {sens_txt}  |  {hit_txt}  |  {night_txt}  |  {mute_txt}  |  [ESC] Turbo"
         hint_color = (200, 200, 220) if is_dark else (100, 100, 100)
         hint_surf = hint_font.render(hints, True, hint_color)
-        self.screen.blit(hint_surf, (self.config.screen_width - 430, 10))
+        self.screen.blit(hint_surf, (self.config.screen_width - 500, 10))
 
         pygame.display.flip()

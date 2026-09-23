@@ -23,6 +23,7 @@ class HUD:
         alive_count: int,
         total_population: int,
         dark_mode: bool = False,
+        sim_speed: int = 1,
     ) -> None:
         font = assets.font_medium or pygame.font.SysFont("Arial", 15)
         font_large = assets.font_large or pygame.font.SysFont("Arial", 18)
@@ -32,13 +33,15 @@ class HUD:
         green = (50, 205, 50) if dark_mode else (34, 139, 34)
 
         speed_mag = abs(speed)
-        px_per_sec = speed_mag / max(1e-4, clock_period)
+        px_per_sec = speed_mag / max(1e-4, clock_period) * sim_speed
+
+        speed_label = f"Velocidade: {speed_mag:.2f} ({px_per_sec:.0f} px/s) [{sim_speed}x]" if sim_speed > 1 else f"Velocidade: {speed_mag:.2f} ({px_per_sec:.0f} px/s)"
 
         lines = [
             (f"Geração: {generation}", text_color, font_large),
             (f"Vivos: {alive_count} / {total_population}", green, font),
             (f"Clock: {clock_period:.4f} segundo", text_color, font),
-            (f"Velocidade: {speed_mag:.2f} ({px_per_sec:.0f} px/s)", text_color, font),
+            (speed_label, text_color, font),
         ]
 
         cur_y = self.base_y

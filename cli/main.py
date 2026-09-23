@@ -197,14 +197,17 @@ def run_graphical(engine: GameEngine, target_fps: int = 60, start_muted: bool = 
     player_duck = False
     player_airplane = False
 
+    sim_speed = 1
+    speed_levels = [1, 2, 5, 10, 20, 50]
+
     print("\nControles e Atalhos:")
-    print("  ESC: Alternar desenho da tela (Modo Turbo On/Off)")
+    print("  ESC: Alternar desenho da tela (Modo Turbo Ultra Rápido)")
+    print("  + / - ou Seta Cima/Baixo: Acelerar simulação (1x, 2x, 5x, 10x, 20x, 50x)")
     print("  S: Alternar Raios de Sensores da IA (On/Off)")
     print("  H: Alternar Caixas de Colisão / Hitbox (On/Off)")
+    print("  N: Alternar Ciclo Dia/Noite (Modo Escuro On/Off)")
     print("  M: Alternar Áudio / Mudo")
-    if engine.mode == "training":
-        print("  Seta Cima / Seta Baixo: Acelerar / Desacelerar simulação")
-    elif engine.mode in ("play", "versus"):
+    if engine.mode in ("play", "versus"):
         print("  Seta Cima: Pular | Seta Baixo: Abaixar | Barra de Espaço: Avião")
 
     while running:
@@ -216,7 +219,8 @@ def run_graphical(engine: GameEngine, target_fps: int = 60, start_muted: bool = 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     renderer.show_display = not renderer.show_display
-                    print(f"[Visualização] {'Visível' if renderer.show_display else 'Oculto (Turbo)'}")
+                    status = "Visível" if renderer.show_display else "Oculto (Turbo Ultra Rápido ~50x)"
+                    print(f"[Visualização] {status}")
 
                 elif event.key == pygame.K_s:
                     renderer.show_sensors = not renderer.show_sensors
@@ -235,10 +239,14 @@ def run_graphical(engine: GameEngine, target_fps: int = 60, start_muted: bool = 
                     print(f"[Ciclo Dia/Noite] {'Ativado' if renderer.enable_day_night else 'Desativado (Modo Claro Padrão)'}")
 
                 if engine.mode == "training":
-                    if event.key == pygame.K_UP:
-                        clock_period = max(0.0005, clock_period / 2.0)
-                    elif event.key == pygame.K_DOWN:
-                        clock_period = min(0.05, clock_period * 2.0)
+                    if event.key in (pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_EQUALS, pygame.K_UP):
+                        idx = next((i for i, s in enumerate(speed_levels) if s > sim_speed), len(speed_levels) - 1)
+                        sim_speed = speed_levels[idx]
+                        print(f"[Simulação] Acelerada para {sim_speed}x")
+                    elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS, pygame.K_DOWN):
+                        idx = next((i for i, s in reversed(list(enumerate(speed_levels))) if s < sim_speed), 0)
+                        sim_speed = speed_levels[idx]
+                        print(f"[Simulação] Reduzida para {sim_speed}x")
                 elif engine.mode in ("play", "versus"):
                     if event.key == pygame.K_UP:
                         player_jump = True
@@ -256,13 +264,22 @@ def run_graphical(engine: GameEngine, target_fps: int = 60, start_muted: bool = 
                     elif event.key == pygame.K_SPACE:
                         player_airplane = False
 
-        # Physics step
+        # Execute physics ticks based on speed multiplier or Turbo mode
+        current_steps = 50 if not renderer.show_display else sim_speed
         p_inputs = (player_jump, player_duck, player_airplane) if engine.mode in ("play", "versus") else None
-        engine.step(dt=clock_period, player_inputs=p_inputs)
 
-        # Render frame
-        renderer.render(engine, clock_period=clock_period)
-        clock.tick(target_fps)
+        for _ in range(current_steps):
+            finished = engine.step(dt=clock_period, player_inputs=p_inputs)
+            if finished:
+                break
+
+        # Render frame (if display is active)
+        if renderer.show_display:
+            renderer.render(engine, clock_period=clock_period, sim_speed=sim_speed)
+            clock.tick(target_fps)
+        else:
+            # In Turbo mode, avoid 60 FPS lock and tick minimally for OS window event handling
+            clock.tick(500)
 
     pygame.quit()
 
